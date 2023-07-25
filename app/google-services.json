@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "320062031559",
+    "project_id": "ticketing-system-f5a23",
+    "storage_bucket": "ticketing-system-f5a23.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:320062031559:android:4f4f5a4d09d5980c88e0e2",
+        "android_client_info": {
+          "package_name": "com.example.ticketingsystem"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "320062031559-ko2tv7v1c9ikrt98vqds4v7s0d9ceieb.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAp4Ht4hJMh8p1ulDDqa3AtKBVz6UxYYCc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "320062031559-ko2tv7v1c9ikrt98vqds4v7s0d9ceieb.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

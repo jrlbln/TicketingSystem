@@ -12,7 +12,13 @@
         android:theme="@style/Theme.TicketingSystem"
         tools:targetApi="31">
         <activity
-            android:name=".MainActivity"
+            android:name=".ClientMain"
+            android:exported="false" />
+        <activity
+            android:name=".AdminMain"
+            android:exported="false" />
+        <activity
+            android:name=".SignIn"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -20,6 +26,9 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".SignUp"
+            android:exported="false" />
     </application>
 
 </manifest>
