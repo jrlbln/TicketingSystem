@@ -72,8 +72,12 @@ public class SignIn extends AppCompatActivity {
                         DocumentSnapshot document = task.getResult();
                         if (document != null && document.exists()) {
                             boolean isAdmin = document.getBoolean("isAdmin");
+                            boolean isTeller = document.getBoolean("isTeller");
+
                             if (isAdmin) {
                                 startActivity(new Intent(SignIn.this, AdminMain.class));
+                            } else if (isTeller) {
+                                startActivity(new Intent(SignIn.this, TellerMain.class));
                             } else {
                                 startActivity(new Intent(SignIn.this, ClientMain.class));
                             }
@@ -85,4 +89,5 @@ public class SignIn extends AppCompatActivity {
                     }
                 });
     }
+
 }

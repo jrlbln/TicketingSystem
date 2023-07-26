@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/action_call"
+        android:title="Call"
+        android:icon="@drawable/ic_ticket" />
+    <item
+        android:id="@+id/action_transfer"
+        android:title="Transfer"
+        android:icon="@drawable/ic_transfer" />
+</menu>

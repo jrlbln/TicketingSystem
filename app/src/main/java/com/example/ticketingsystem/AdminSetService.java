@@ -58,10 +58,9 @@ public class AdminSetService extends AppCompatActivity {
                 switch (item.getItemId()) {
                     case R.id.action_services:
                         startActivity(new Intent(AdminSetService.this, AdminMain.class));
-                        finish(); // Call finish() to close the current activity and prevent going back to it
+                        finish();
                         return true;
                     case R.id.action_tellers:
-                        // Already in the Tellers activity, no need to navigate to it again
                         return true;
                     default:
                         return false;
@@ -71,10 +70,8 @@ public class AdminSetService extends AppCompatActivity {
 
         bottomNavigationView.setSelectedItemId(R.id.action_tellers);
 
-        // Load tellers and their services from Firestore
         loadTellers();
 
-        // Set a click listener for the "Save" button
         saveButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {

@@ -53,19 +53,16 @@ public class AdminMain extends AppCompatActivity {
             }
         });
 
-        // Initialize and set up the bottom navigation
         BottomNavigationView bottomNavigationView = findViewById(R.id.bottomNavigation);
         bottomNavigationView.setOnNavigationItemSelectedListener(new BottomNavigationView.OnNavigationItemSelectedListener() {
             @Override
             public boolean onNavigationItemSelected(@NonNull MenuItem item) {
                 switch (item.getItemId()) {
                     case R.id.action_services:
-                        // Already in the Services activity, no need to navigate to it again
                         return true;
                     case R.id.action_tellers:
-                        // Handle the "Tellers" menu item click (if you want to navigate to AdminSetService)
                         startActivity(new Intent(AdminMain.this, AdminSetService.class));
-                        finish(); // Call finish() to close the current activity and prevent going back to it
+                        finish();
                         return true;
                     default:
                         return false;
@@ -73,10 +70,8 @@ public class AdminMain extends AppCompatActivity {
             }
         });
 
-        // Set the "Tellers" tab as checked
         bottomNavigationView.setSelectedItemId(R.id.action_services);
 
-        // Load existing services from Firestore on activity start
         loadExistingServices();
         setupRealTimeListener();
     }
