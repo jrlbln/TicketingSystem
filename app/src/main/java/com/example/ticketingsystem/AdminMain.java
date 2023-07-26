@@ -1,7 +1,9 @@
 package com.example.ticketingsystem;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -15,6 +17,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.DocumentChange;
 import com.google.firebase.firestore.DocumentSnapshot;
@@ -49,6 +52,29 @@ public class AdminMain extends AppCompatActivity {
                 addServiceToList();
             }
         });
+
+        // Initialize and set up the bottom navigation
+        BottomNavigationView bottomNavigationView = findViewById(R.id.bottomNavigation);
+        bottomNavigationView.setOnNavigationItemSelectedListener(new BottomNavigationView.OnNavigationItemSelectedListener() {
+            @Override
+            public boolean onNavigationItemSelected(@NonNull MenuItem item) {
+                switch (item.getItemId()) {
+                    case R.id.action_services:
+                        // Already in the Services activity, no need to navigate to it again
+                        return true;
+                    case R.id.action_tellers:
+                        // Handle the "Tellers" menu item click (if you want to navigate to AdminSetService)
+                        startActivity(new Intent(AdminMain.this, AdminSetService.class));
+                        finish(); // Call finish() to close the current activity and prevent going back to it
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+        });
+
+        // Set the "Tellers" tab as checked
+        bottomNavigationView.setSelectedItemId(R.id.action_services);
 
         // Load existing services from Firestore on activity start
         loadExistingServices();

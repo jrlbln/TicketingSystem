@@ -59,6 +59,7 @@ public class SignUp extends AppCompatActivity {
                                     userMap.put("address", address);
                                     userMap.put("email", email);
                                     userMap.put("isAdmin", false);
+                                    userMap.put("isTeller", false);
 
                                     db.collection("users").document(userId)
                                             .set(userMap, SetOptions.merge())
