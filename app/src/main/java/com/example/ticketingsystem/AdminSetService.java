@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.LinearLayout;
@@ -92,7 +93,8 @@ public class AdminSetService extends AppCompatActivity {
                             List<DocumentSnapshot> tellersList = task.getResult().getDocuments();
                             for (DocumentSnapshot tellerSnapshot : tellersList) {
                                 String tellerName = tellerSnapshot.getString("name");
-                                addTellerRow(tellerName);
+                                String assignedService = tellerSnapshot.getString("service");
+                                addTellerRow(tellerName, assignedService);
                             }
                         } else {
                             Toast.makeText(AdminSetService.this, "Failed to load tellers.", Toast.LENGTH_SHORT).show();
@@ -101,20 +103,41 @@ public class AdminSetService extends AppCompatActivity {
                 });
     }
 
-    private void addTellerRow(String tellerName) {
+    private void addTellerRow(String tellerName, String assignedService) {
         View tellerRow = LayoutInflater.from(this).inflate(R.layout.teller_row_layout, null);
         TextView textViewTellerName = tellerRow.findViewById(R.id.textViewTellerName);
+        TextView textViewService = tellerRow.findViewById(R.id.textViewService);
         Spinner spinnerServices = tellerRow.findViewById(R.id.spinnerServices);
 
         textViewTellerName.setText(tellerName);
 
-        // Load services from Firestore
+        // Load services from Firestore when the activity is created
         loadServices(new OnServicesLoadedListener() {
             @Override
             public void onServicesLoaded(List<String> servicesList) {
-                ArrayAdapter<String> adapter = new ArrayAdapter<>(AdminSetService.this, android.R.layout.simple_spinner_item, servicesList);
-                adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                // Use the custom spinner adapter here
+                CustomSpinnerAdapter adapter = new CustomSpinnerAdapter(AdminSetService.this, servicesList);
                 spinnerServices.setAdapter(adapter);
+
+                // Set the selected service if available
+                if (assignedService != null && !assignedService.isEmpty()) {
+                    int position = adapter.getPosition(assignedService);
+                    spinnerServices.setSelection(position);
+                }
+
+                // Set the OnItemSelectedListener for the spinner
+                spinnerServices.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                    @Override
+                    public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                        String selectedService = (String) parent.getItemAtPosition(position);
+                        textViewService.setText(selectedService);
+                    }
+
+                    @Override
+                    public void onNothingSelected(AdapterView<?> parent) {
+                        // Do nothing
+                    }
+                });
             }
         });
 
@@ -185,3 +208,4 @@ public class AdminSetService extends AppCompatActivity {
         }
     }
 }
+
