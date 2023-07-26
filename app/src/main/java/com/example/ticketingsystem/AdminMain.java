@@ -197,14 +197,12 @@ public class AdminMain extends AppCompatActivity {
                 for (DocumentSnapshot document : snapshot.getDocuments()) {
                     String serviceName = document.getString("serviceName");
 
-                    // Add the service to the UI if it doesn't already exist
                     if (!existingServiceNames.contains(serviceName)) {
                         addServiceRowWithText(serviceName);
                         existingServiceNames.add(serviceName);
                     }
                 }
 
-                // Remove any views for services that no longer exist in the database
                 for (int i = servicesContainer.getChildCount() - 1; i >= 0; i--) {
                     View serviceRow = servicesContainer.getChildAt(i);
                     TextView textViewServiceName = serviceRow.findViewById(R.id.textViewServiceName);

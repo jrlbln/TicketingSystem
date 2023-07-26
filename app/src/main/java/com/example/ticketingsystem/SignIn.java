@@ -10,6 +10,9 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
@@ -42,16 +45,19 @@ public class SignIn extends AppCompatActivity {
                 String password = passwordEditText.getText().toString().trim();
 
                 mAuth.signInWithEmailAndPassword(email, password)
-                        .addOnCompleteListener(SignIn.this, task -> {
-                            if (task.isSuccessful()) {
-                                FirebaseUser user = mAuth.getCurrentUser();
-                                if (user != null) {
-                                    String userId = user.getUid();
-                                    checkAdminAndRedirect(userId);
+                        .addOnCompleteListener(SignIn.this, new OnCompleteListener<AuthResult>() {
+                            @Override
+                            public void onComplete(@NonNull Task<AuthResult> task) {
+                                if (task.isSuccessful()) {
+                                    FirebaseUser user = mAuth.getCurrentUser();
+                                    if (user != null) {
+                                        String userId = user.getUid();
+                                        checkAdminAndRedirect(userId);
+                                    }
+                                } else {
+                                    Toast.makeText(SignIn.this, "Authentication failed.",
+                                            Toast.LENGTH_SHORT).show();
                                 }
-                            } else {
-                                Toast.makeText(SignIn.this, "Authentication failed.",
-                                        Toast.LENGTH_SHORT).show();
                             }
                         });
             }

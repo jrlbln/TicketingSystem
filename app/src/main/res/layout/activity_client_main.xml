@@ -7,13 +7,76 @@
     tools:context=".ClientMain">
 
     <TextView
-        android:id="@+id/textView2"
+        android:id="@+id/textViewClientName"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="CLIENT"
         android:textSize="50sp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.063" />
+
+    <TextView
+        android:id="@+id/textViewTicketNumber"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="TICKET NUMBER"
+        android:textSize="50sp"
+        android:textAlignment="center"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.533" />
+
+    <LinearLayout
+        android:id="@+id/linearLayout2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="28dp"
+        android:gravity="center"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/textViewClientName">
+
+        <TextView
+            android:id="@+id/textViewService"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="10dp"
+            android:text="Please Select a Service: "
+            android:textSize="25sp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.35"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_bias="0.309" />
+
+        <Spinner
+            android:id="@+id/spinnerServices"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.325"
+            app:layout_constraintStart_toEndOf="@+id/textViewService"
+            tools:layout_editor_absoluteY="226dp" />
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/buttonGenerateTicket"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Generate Ticket"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/textViewTicketNumber"
+        app:layout_constraintVertical_bias="0.874" />
+
+
 </androidx.constraintlayout.widget.ConstraintLayout>
