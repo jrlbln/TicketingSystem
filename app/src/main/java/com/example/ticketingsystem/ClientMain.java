@@ -15,7 +15,10 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.DocumentChange;
+import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.EventListener;
+import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.firestore.ListenerRegistration;
@@ -50,6 +53,7 @@ public class ClientMain extends AppCompatActivity {
         spinnerServices = findViewById(R.id.spinnerServices);
         buttonGenerateTicket = findViewById(R.id.buttonGenerateTicket);
         textViewLatestNumberEdit = findViewById(R.id.textViewLatestNumberEdit);
+        textViewCurrentNumberEdit = findViewById(R.id.textViewCurrentNumberEdit);
 
         servicesListForInitialLoading = new ArrayList<>();
         servicesList = new ArrayList<>();
@@ -60,7 +64,6 @@ public class ClientMain extends AppCompatActivity {
         spinnerServices.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                // Update the selected service in the textViewService
                 String selectedService = (String) parent.getItemAtPosition(position);
                 if (isInitialLoadingComplete) {
                     textViewService.setText(selectedService);
@@ -169,6 +172,27 @@ public class ClientMain extends AppCompatActivity {
                     try {
                         latestTicketNumber = Integer.parseInt(lastTicketNumber);
                         textViewLatestNumberEdit.setText(String.format("%03d", latestTicketNumber));
+
+                        // Real-time listener for the currentTicket field
+                        servicesCollection.document(selectedService).addSnapshotListener(new EventListener<DocumentSnapshot>() {
+                            @Override
+                            public void onEvent(@javax.annotation.Nullable DocumentSnapshot documentSnapshot, @javax.annotation.Nullable FirebaseFirestoreException e) {
+                                if (e != null) {
+                                    // Handle any errors that occurred during the listening process
+                                    Toast.makeText(ClientMain.this, "Error fetching current ticket: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                                    return;
+                                }
+
+                                if (documentSnapshot != null && documentSnapshot.exists()) {
+                                    String currentTicketNumber = documentSnapshot.getString("currentTicket");
+                                    if (currentTicketNumber != null) {
+                                        textViewCurrentNumberEdit.setText(currentTicketNumber);
+                                    } else {
+                                        textViewCurrentNumberEdit.setText("No Current Ticket");
+                                    }
+                                }
+                            }
+                        });
                     } catch (NumberFormatException ex) {
                         // Handle error if the ticket number is not a valid integer
                         ex.printStackTrace();
@@ -180,6 +204,41 @@ public class ClientMain extends AppCompatActivity {
                 }
             }
         });
+
+        setupRealTimeListenerForCurrentTicket(selectedService);
+    }
+
+    private void setupRealTimeListenerForCurrentTicket(String selectedService) {
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        DocumentReference serviceDocument = db.collection("services").document(selectedService);
+
+        serviceDocument.addSnapshotListener(new EventListener<DocumentSnapshot>() {
+            @Override
+            public void onEvent(@javax.annotation.Nullable DocumentSnapshot snapshot, @javax.annotation.Nullable FirebaseFirestoreException e) {
+                if (e != null) {
+                    // Handle any errors that occurred during the listening process
+                    Toast.makeText(ClientMain.this, "Error fetching service data: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                if (snapshot != null && snapshot.exists()) {
+                    String currentTicketNumber = snapshot.getString("currentTicket");
+                    if (currentTicketNumber != null && !currentTicketNumber.isEmpty()) {
+                        textViewCurrentNumberEdit.setText(currentTicketNumber);
+                        checkForTurn(currentTicketNumber);
+                    } else {
+                        textViewCurrentNumberEdit.setText("N/A");
+                    }
+                }
+            }
+        });
+    }
+
+    private void checkForTurn(String currentTicketNumber) {
+        String generatedTicketNumber = textViewTicketNumber.getText().toString();
+        if (generatedTicketNumber.equals(currentTicketNumber)) {
+            Toast.makeText(ClientMain.this, "It's your turn! Your ticket number is " + currentTicketNumber, Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void generateTicket() {
@@ -221,20 +280,37 @@ public class ClientMain extends AppCompatActivity {
                     // Format the ticket number as a 3-digit string (e.g., 001)
                     String ticketNumberString = String.format("%03d", ticketNumber);
 
-                    // Create a new Ticket object
-                    Ticket ticket = new Ticket(ticketNumberString, System.currentTimeMillis());
+                    // Create a new Ticket object with the server's timestamp
+                    Ticket ticket = new Ticket(ticketNumberString, FieldValue.serverTimestamp());
 
                     // Use the ticket number as the document name when adding the ticket to the "tickets" collection
-                    ticketsCollection.document(ticketNumberString).set(ticket);
+                    int finalTicketNumber = ticketNumber;
+                    ticketsCollection.document(ticketNumberString)
+                            .set(ticket)
+                            .addOnCompleteListener(new OnCompleteListener<Void>() {
+                                @Override
+                                public void onComplete(@NonNull Task<Void> task) {
+                                    if (task.isSuccessful()) {
+                                        // Update the UI with the generated ticket information
+                                        textViewTicketNumber.setText(ticketNumberString);
 
-                    // Update the UI with the generated ticket information
-                    textViewTicketNumber.setText(ticketNumberString);
+                                        // Update the latest ticket number displayed
+                                        latestTicketNumber = finalTicketNumber;
+                                        textViewLatestNumberEdit.setText(String.format("%03d", latestTicketNumber));
 
-                    // Update the latest ticket number displayed
-                    latestTicketNumber = ticketNumber;
-                    textViewLatestNumberEdit.setText(String.format("%03d", latestTicketNumber));
-
-                    Toast.makeText(ClientMain.this, "Ticket generated successfully.", Toast.LENGTH_SHORT).show();
+                                        // Check if the generated ticket number matches the current ticket number
+                                        String currentTicketNumber = textViewCurrentNumberEdit.getText().toString();
+                                        if (ticketNumberString.equals(currentTicketNumber)) {
+                                            Toast.makeText(ClientMain.this, "It's your turn! Your ticket number is " + currentTicketNumber, Toast.LENGTH_SHORT).show();
+                                        } else {
+                                            Toast.makeText(ClientMain.this, "Ticket generated successfully. Your ticket number is " + ticketNumberString, Toast.LENGTH_SHORT).show();
+                                        }
+                                    } else {
+                                        // Handle error if adding the ticket fails
+                                        Toast.makeText(ClientMain.this, "Failed to generate ticket.", Toast.LENGTH_SHORT).show();
+                                    }
+                                }
+                            });
                 } else {
                     // Handle error if fetching last ticket fails
                     Toast.makeText(ClientMain.this, "Failed to generate ticket.", Toast.LENGTH_SHORT).show();
