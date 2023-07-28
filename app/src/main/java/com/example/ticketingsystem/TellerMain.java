@@ -15,6 +15,7 @@ import android.widget.Toast;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.EventListener;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -32,7 +33,7 @@ public class TellerMain extends AppCompatActivity {
     private TextView textViewTicketNumber;
     private List<String> ticketNumbers;
     private ArrayAdapter<String> ticketAdapter;
-    private String assignedService;
+    private String assignedService, tellerName ;
     private String currentTicketNumber = "0";
 
     @Override
@@ -82,14 +83,30 @@ public class TellerMain extends AppCompatActivity {
                     if (task.isSuccessful() && task.getResult() != null) {
                         DocumentSnapshot documentSnapshot = task.getResult();
                         assignedService = documentSnapshot.getString("service");
+                        tellerName = documentSnapshot.getString("name");
                         if (assignedService != null) {
                             textViewServiceName.setText(assignedService);
                             setupTicketsRealTimeListener(assignedService.toLowerCase());
+
+                            // Add the teller's information to the "tellers" subcollection
+                            db.collection("services")
+                                    .document(assignedService.toLowerCase())
+                                    .collection("tellers")
+                                    .document(tellerName)
+                                    .set(new Teller(tellerName, "N/A"))
+                                    .addOnSuccessListener(aVoid -> {
+                                        // Teller information added successfully
+                                    })
+                                    .addOnFailureListener(e -> {
+                                        Toast.makeText(TellerMain.this, "Error adding teller information: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                                    });
                         } else {
                             textViewServiceName.setText("No Service Assigned");
                         }
                     }
                 });
+
+
 
         // Set up real-time listener for the teller document in Firestore
         db.collection("users")
@@ -104,11 +121,17 @@ public class TellerMain extends AppCompatActivity {
                         }
 
                         if (documentSnapshot != null && documentSnapshot.exists()) {
-                            assignedService = documentSnapshot.getString("service");
-                            if (assignedService != null) {
+                            String newAssignedService = documentSnapshot.getString("service");
+                            if (newAssignedService != null && !newAssignedService.equals(assignedService)) {
+                                assignedService = newAssignedService;
                                 textViewServiceName.setText(assignedService);
-                            } else {
+                                setupTicketsRealTimeListener(assignedService.toLowerCase());
+                            } else if (newAssignedService == null) {
+                                // Service was unassigned, clear the ticket list
+                                assignedService = null;
                                 textViewServiceName.setText("No Service Assigned");
+                                ticketNumbers.clear();
+                                ticketAdapter.notifyDataSetChanged();
                             }
                         }
                     }
@@ -149,16 +172,18 @@ public class TellerMain extends AppCompatActivity {
                     }
 
                     if (snapshot != null && !snapshot.isEmpty()) {
-                        // Clear the previous ticket list
-                        ticketNumbers.clear();
                         // Fetch the updated ticket numbers from the snapshot
+                        ticketNumbers.clear();
                         for (DocumentSnapshot documentSnapshot : snapshot.getDocuments()) {
                             String ticketNumber = documentSnapshot.getString("ticketNumber");
                             ticketNumbers.add(ticketNumber);
                         }
-                        // Update the list view with the new ticket numbers
-                        ticketAdapter.notifyDataSetChanged();
+                    } else {
+                        // If there are no tickets, clear the list
+                        ticketNumbers.clear();
                     }
+                    // Update the list view with the new ticket numbers or empty list
+                    ticketAdapter.notifyDataSetChanged();
                 });
     }
 
@@ -169,65 +194,74 @@ public class TellerMain extends AppCompatActivity {
         }
 
         String nextTicketNumber = ticketNumbers.get(0);
-        String currentTicketNumber = textViewTicketNumber.getText().toString();
 
-        // Remove the first ticket from the list in Firestore
-        db.collection("services")
+        // Reference to the "tickets" collection for the selected service
+        CollectionReference ticketsCollection = db.collection("services")
                 .document(assignedService.toLowerCase())
-                .collection("tickets")
-                .document(nextTicketNumber)
-                .delete()
-                .addOnCompleteListener(task -> {
-                    if (task.isSuccessful()) {
-                        // Retrieve the currentTicket value from Firestore
-                        db.collection("services")
+                .collection("tickets");
+
+        // Use a Firestore transaction to ensure atomicity
+        db.runTransaction(transaction -> {
+            // Get the ticket document in the transaction
+            DocumentSnapshot ticketSnapshot = transaction.get(ticketsCollection.document(nextTicketNumber));
+
+            if (ticketSnapshot.exists()) {
+                // Get the ticket timestamp from Firestore
+                Object timestamp = ticketSnapshot.get("timestamp");
+
+                // Create a new Ticket object with the ticket number, timestamp, and teller name
+                Ticket ticket = new Ticket(nextTicketNumber, timestamp, tellerName);
+
+                // Save the ticket to the "calledTickets" collection under the service
+                transaction.set(db.collection("services")
                                 .document(assignedService.toLowerCase())
-                                .get()
-                                .addOnCompleteListener(currentTicketTask -> {
-                                    if (currentTicketTask.isSuccessful() && currentTicketTask.getResult() != null) {
-                                        String currentTicket = currentTicketTask.getResult().getString("currentTicket");
+                                .collection("calledTickets")
+                                .document(nextTicketNumber),
+                        ticket);
 
-                                        // Update the previousTicket field to the retrieved currentTicket
-                                        db.collection("services")
-                                                .document(assignedService.toLowerCase())
-                                                .update("previousTicket", currentTicket)
-                                                .addOnSuccessListener(aVoid -> {
-                                                    // Set the currentTicket field to the new ticket number
-                                                    db.collection("services")
-                                                            .document(assignedService.toLowerCase())
-                                                            .update("currentTicket", nextTicketNumber)
-                                                            .addOnSuccessListener(aVoid1 -> {
-                                                                textViewTicketNumber.setText(nextTicketNumber);
+                // Remove the ticket from the "tickets" collection
+                transaction.delete(ticketsCollection.document(nextTicketNumber));
 
-                                                                // Create "calledTickets" collection if it doesn't exist
-                                                                db.collection("services")
-                                                                        .document(assignedService.toLowerCase())
-                                                                        .collection("calledTickets")
-                                                                        .document(nextTicketNumber)
-                                                                        .set(new Ticket(nextTicketNumber, FieldValue.serverTimestamp()))
-                                                                        .addOnSuccessListener(aVoid2 -> {
-                                                                            // Ticket added to "calledTickets" collection
-                                                                        })
-                                                                        .addOnFailureListener(e -> {
-                                                                            Toast.makeText(TellerMain.this, "Error adding ticket to 'calledTickets': " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                                                                        });
-                                                            })
-                                                            .addOnFailureListener(e -> {
-                                                                Toast.makeText(TellerMain.this, "Error updating current ticket: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                                                            });
-                                                })
-                                                .addOnFailureListener(e -> {
-                                                    Toast.makeText(TellerMain.this, "Error updating previous ticket: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                                                });
-                                    } else {
-                                        Toast.makeText(TellerMain.this, "Error retrieving current ticket: " + currentTicketTask.getException().getMessage(), Toast.LENGTH_SHORT).show();
-                                    }
-                                });
-                    } else {
-                        Toast.makeText(TellerMain.this, "Error calling next ticket: " + task.getException().getMessage(), Toast.LENGTH_SHORT).show();
-                    }
-                });
+                // Update the currentTicket field to the new ticket number
+                transaction.update(db.collection("services")
+                        .document(assignedService.toLowerCase()), "currentTicket", nextTicketNumber);
+
+                // Update the teller's current ticket number in the "tellers" subcollection
+                transaction.update(db.collection("services")
+                        .document(assignedService.toLowerCase())
+                        .collection("tellers")
+                        .document(tellerName), "currentTicket", nextTicketNumber);
+
+                // Update the previousTicket field to the previous current ticket number
+                String currentTicketNumber = textViewTicketNumber.getText().toString();
+                if (!currentTicketNumber.isEmpty()) {
+                    transaction.update(db.collection("services")
+                            .document(assignedService.toLowerCase()), "previousTicket", currentTicketNumber);
+                }
+
+                return null;
+            } else {
+                // If the ticket does not exist, throw an exception to roll back the transaction
+                throw new FirebaseFirestoreException("Ticket not found", FirebaseFirestoreException.Code.ABORTED);
+            }
+        }).addOnSuccessListener(aVoid -> {
+            // Transaction completed successfully
+            textViewTicketNumber.setText(nextTicketNumber);
+            // Remove the ticket number from the list as it is called
+            ticketNumbers.remove(0);
+            ticketAdapter.notifyDataSetChanged();
+        }).addOnFailureListener(e -> {
+            // Transaction failed, handle the error
+            if (e instanceof FirebaseFirestoreException && ((FirebaseFirestoreException) e).getCode() == FirebaseFirestoreException.Code.ABORTED) {
+                // Ticket not found, inform the user
+                Toast.makeText(TellerMain.this, "Ticket not found.", Toast.LENGTH_SHORT).show();
+            } else {
+                // Other errors
+                Toast.makeText(TellerMain.this, "Error calling next ticket: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
     }
+
 
     private void callAgainTicket() {
         String currentTicket = textViewTicketNumber.getText().toString();

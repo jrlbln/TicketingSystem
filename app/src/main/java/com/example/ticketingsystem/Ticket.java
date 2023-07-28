@@ -1,9 +1,9 @@
 package com.example.ticketingsystem;
 
-import com.google.firebase.firestore.FieldValue;
 public class Ticket {
     private String ticketNumber;
-    private Object timestamp; // Use Object to store the timestamp as Firestore accepts different timestamp types
+    private Object timestamp;
+    private String tellerName;
 
     public Ticket() {
         // Required empty constructor for Firestore
@@ -14,11 +14,21 @@ public class Ticket {
         this.timestamp = timestamp;
     }
 
+    public Ticket(String ticketNumber, Object timestamp, String tellerName) {
+        this.ticketNumber = ticketNumber;
+        this.timestamp = timestamp;
+        this.tellerName = tellerName;
+    }
+
     public String getTicketNumber() {
         return ticketNumber;
     }
 
     public Object getTimestamp() {
         return timestamp;
+    }
+
+    public String getTellerName() {
+        return tellerName;
     }
 }
