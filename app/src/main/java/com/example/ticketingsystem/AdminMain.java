@@ -90,7 +90,7 @@ public class AdminMain extends AppCompatActivity {
                 serviceMap.put("serviceName", serviceText);
 
                 // Add the service to Firestore with the service name as the document ID
-                db.collection("services").document(serviceText.toLowerCase())
+                db.collection("services").document(serviceText)
                         .set(serviceMap)
                         .addOnCompleteListener(new OnCompleteListener<Void>() {
                             @Override
