@@ -1,9 +1,12 @@
 package com.example.ticketingsystem;
 
 import android.os.Bundle;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.Button;
+import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -19,7 +22,6 @@ import com.google.firebase.firestore.EventListener;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.firestore.ListenerRegistration;
-import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QuerySnapshot;
 
 import java.util.ArrayList;
@@ -29,15 +31,15 @@ import java.util.Set;
 
 public class ClientMain extends AppCompatActivity {
 
-    private TextView textViewClientName, textViewTicketNumber, textViewService, textViewLatestNumberEdit;
+    private TextView textViewClientName;
+    private TextView textViewTicketNumber;
+    private TextView textViewService;
     private Spinner spinnerServices;
     private Button buttonGenerateTicket;
     private List<String> servicesList;
     private List<String> servicesListForInitialLoading;
     private CustomSpinnerAdapter spinnerAdapter;
     private ListenerRegistration servicesListenerRegistration;
-    private boolean isInitialLoadingComplete = false;
-    private int latestTicketNumber = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,7 +51,6 @@ public class ClientMain extends AppCompatActivity {
         textViewService = findViewById(R.id.textViewService);
         spinnerServices = findViewById(R.id.spinnerServices);
         buttonGenerateTicket = findViewById(R.id.buttonGenerateTicket);
-        textViewLatestNumberEdit = findViewById(R.id.textViewLatestNumberEdit);
 
         servicesListForInitialLoading = new ArrayList<>();
         servicesList = new ArrayList<>();
@@ -60,31 +61,20 @@ public class ClientMain extends AppCompatActivity {
         spinnerServices.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                // Update the selected service in the textViewService
                 String selectedService = (String) parent.getItemAtPosition(position);
-                if (isInitialLoadingComplete) {
-                    textViewService.setText(selectedService);
-                    listenForTicketChanges(selectedService.toLowerCase());
-                } else {
-                    textViewService.setText("Please Select a Service: ");
-                }
-                isInitialLoadingComplete = true;
+                textViewService.setText(selectedService);
             }
 
             @Override
             public void onNothingSelected(AdapterView<?> parent) {
+                // Do nothing
             }
         });
 
         loadServicesFromFirestore();
 
         setupRealTimeListener();
-
-        buttonGenerateTicket.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                generateTicket();
-            }
-        });
     }
 
     private void loadServicesFromFirestore() {
@@ -145,99 +135,6 @@ public class ClientMain extends AppCompatActivity {
 
                 // Update the adapter with real-time update data
                 spinnerAdapter.notifyDataSetChanged();
-            }
-        });
-    }
-
-    private void listenForTicketChanges(String selectedService) {
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
-        CollectionReference servicesCollection = db.collection("services");
-        CollectionReference ticketsCollection = servicesCollection.document(selectedService).collection("tickets");
-        ticketsCollection.orderBy("ticketNumber", Query.Direction.DESCENDING).limit(1).addSnapshotListener(new EventListener<QuerySnapshot>() {
-            @Override
-            public void onEvent(@NonNull QuerySnapshot snapshot, @NonNull FirebaseFirestoreException e) {
-                if (e != null) {
-                    // Handle any errors that occurred during the listening process
-                    Toast.makeText(ClientMain.this, "Error fetching tickets: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                // Check if there are any tickets in the collection
-                if (!snapshot.isEmpty()) {
-                    String lastTicketNumber = snapshot.getDocuments().get(0).getString("ticketNumber");
-                    try {
-                        latestTicketNumber = Integer.parseInt(lastTicketNumber);
-                        textViewLatestNumberEdit.setText(String.format("%03d", latestTicketNumber));
-                    } catch (NumberFormatException ex) {
-                        // Handle error if the ticket number is not a valid integer
-                        ex.printStackTrace();
-                    }
-                } else {
-                    // If no tickets found, set the latestTicketNumber to 0 and update textViewLatestNumberEdit
-                    latestTicketNumber = 0;
-                    textViewLatestNumberEdit.setText(String.format("%03d", latestTicketNumber));
-                }
-            }
-        });
-    }
-
-    private void generateTicket() {
-        // Get the selected service from the spinner
-        String selectedService = (String) spinnerServices.getSelectedItem();
-
-        if (selectedService == null || selectedService.isEmpty()) {
-            Toast.makeText(this, "Please select a service first.", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        // Convert the selected service to lowercase
-        selectedService = selectedService.toLowerCase();
-
-        // Create a new ticket document under the "tickets" collection for the selected service
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
-        CollectionReference servicesCollection = db.collection("services");
-        CollectionReference ticketsCollection = servicesCollection.document(selectedService).collection("tickets");
-
-        // Query the tickets collection to find the last ticket number
-        ticketsCollection.orderBy("timestamp", Query.Direction.DESCENDING).limit(1).get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
-            @Override
-            public void onComplete(@NonNull Task<QuerySnapshot> task) {
-                if (task.isSuccessful()) {
-                    int ticketNumber = 1; // Default ticket number if no tickets found
-
-                    // Check if any ticket exists in the collection
-                    if (!task.getResult().isEmpty()) {
-                        // Get the last ticket number and increment it
-                        String lastTicketNumber = task.getResult().getDocuments().get(0).getString("ticketNumber");
-                        try {
-                            ticketNumber = Integer.parseInt(lastTicketNumber) + 1;
-                        } catch (NumberFormatException e) {
-                            // Handle error if the ticket number is not a valid integer
-                            e.printStackTrace();
-                        }
-                    }
-
-                    // Format the ticket number as a 3-digit string (e.g., 001)
-                    String ticketNumberString = String.format("%03d", ticketNumber);
-
-                    // Create a new Ticket object
-                    Ticket ticket = new Ticket(ticketNumberString, System.currentTimeMillis());
-
-                    // Use the ticket number as the document name when adding the ticket to the "tickets" collection
-                    ticketsCollection.document(ticketNumberString).set(ticket);
-
-                    // Update the UI with the generated ticket information
-                    textViewTicketNumber.setText(ticketNumberString);
-
-                    // Update the latest ticket number displayed
-                    latestTicketNumber = ticketNumber;
-                    textViewLatestNumberEdit.setText(String.format("%03d", latestTicketNumber));
-
-                    Toast.makeText(ClientMain.this, "Ticket generated successfully.", Toast.LENGTH_SHORT).show();
-                } else {
-                    // Handle error if fetching last ticket fails
-                    Toast.makeText(ClientMain.this, "Failed to generate ticket.", Toast.LENGTH_SHORT).show();
-                }
             }
         });
     }
