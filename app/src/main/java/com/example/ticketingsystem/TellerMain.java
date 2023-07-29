@@ -218,6 +218,18 @@ public class TellerMain extends AppCompatActivity {
                                                                         .addOnFailureListener(e -> {
                                                                             Toast.makeText(TellerMain.this, "Error adding ticket to 'calledTickets': " + e.getMessage(), Toast.LENGTH_SHORT).show();
                                                                         });
+
+                                                                db.collection("services")
+                                                                        .document(assignedService.toLowerCase())
+                                                                        .collection("tellers")
+                                                                        .document(tellerUID)
+                                                                        .update("currentTicket", nextTicketNumber)
+                                                                        .addOnSuccessListener(aVoid2 -> {
+                                                                            // Current ticket updated for the teller
+                                                                        })
+                                                                        .addOnFailureListener(e -> {
+                                                                            Toast.makeText(TellerMain.this, "Error updating current ticket for teller: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                                                                        });
                                                             })
                                                             .addOnFailureListener(e -> {
                                                                 Toast.makeText(TellerMain.this, "Error updating current ticket: " + e.getMessage(), Toast.LENGTH_SHORT).show();
