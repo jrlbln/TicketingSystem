@@ -173,6 +173,27 @@ public class TellerMain extends AppCompatActivity {
     private void callNextTicket() {
         if (ticketNumbers.isEmpty()) {
             textViewTicketNumber.setText("No Tickets");
+            // Set the currentTicket to "000" when there are no more tickets
+            db.collection("services")
+                    .document(assignedService.toLowerCase())
+                    .update("currentTicket", "000")
+                    .addOnSuccessListener(aVoid -> {
+                        // Successfully updated the currentTicket to "000"
+                        db.collection("services")
+                                .document(assignedService.toLowerCase())
+                                .collection("tellers")
+                                .document(tellerUID)
+                                .update("currentTicket", "000")
+                                .addOnSuccessListener(aVoid2 -> {
+                                    // Current ticket updated for the teller
+                                })
+                                .addOnFailureListener(e -> {
+                                    Toast.makeText(TellerMain.this, "Error updating current ticket for teller: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                                });
+                    })
+                    .addOnFailureListener(e -> {
+                        Toast.makeText(TellerMain.this, "Error updating current ticket: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    });
             return;
         }
 
