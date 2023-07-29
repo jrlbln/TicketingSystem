@@ -188,7 +188,7 @@ public class ClientMain extends AppCompatActivity {
                                     if (currentTicketNumber != null) {
                                         textViewCurrentNumberEdit.setText(currentTicketNumber);
                                     } else {
-                                        textViewCurrentNumberEdit.setText("000");
+                                        textViewCurrentNumberEdit.setText("No Current Ticket");
                                     }
                                 }
                             }
