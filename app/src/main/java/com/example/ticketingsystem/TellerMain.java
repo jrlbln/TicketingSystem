@@ -21,6 +21,8 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.FieldValue;
+import com.google.firebase.firestore.Query;
+import com.google.firebase.firestore.QuerySnapshot;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,6 +36,7 @@ public class TellerMain extends AppCompatActivity {
     private ArrayAdapter<String> ticketAdapter;
     private String assignedService;
     private String currentTicketNumber = "0";
+    private String tellerUID = FirebaseAuth.getInstance().getCurrentUser().getUid();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -72,7 +75,7 @@ public class TellerMain extends AppCompatActivity {
         ticketAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, ticketNumbers);
         ticketsList.setAdapter(ticketAdapter);
 
-        String tellerUID = FirebaseAuth.getInstance().getCurrentUser().getUid();
+
 
         // Retrieve the service assigned to the teller from Firestore
         db.collection("users")
@@ -104,11 +107,12 @@ public class TellerMain extends AppCompatActivity {
                         }
 
                         if (documentSnapshot != null && documentSnapshot.exists()) {
-                            assignedService = documentSnapshot.getString("service");
-                            if (assignedService != null) {
+                            String newAssignedService = documentSnapshot.getString("service");
+                            if (newAssignedService != null && !newAssignedService.equals(assignedService)) {
+                                // Service has been changed, update the ticket list for the new service
+                                assignedService = newAssignedService;
                                 textViewServiceName.setText(assignedService);
-                            } else {
-                                textViewServiceName.setText("No Service Assigned");
+                                setupTicketsRealTimeListener(assignedService.toLowerCase());
                             }
                         }
                     }
@@ -158,6 +162,10 @@ public class TellerMain extends AppCompatActivity {
                         }
                         // Update the list view with the new ticket numbers
                         ticketAdapter.notifyDataSetChanged();
+                    } else {
+                        // If there are no tickets, clear the ticket list
+                        ticketNumbers.clear();
+                        ticketAdapter.notifyDataSetChanged();
                     }
                 });
     }
@@ -169,7 +177,6 @@ public class TellerMain extends AppCompatActivity {
         }
 
         String nextTicketNumber = ticketNumbers.get(0);
-        String currentTicketNumber = textViewTicketNumber.getText().toString();
 
         // Remove the first ticket from the list in Firestore
         db.collection("services")
@@ -204,7 +211,7 @@ public class TellerMain extends AppCompatActivity {
                                                                         .document(assignedService.toLowerCase())
                                                                         .collection("calledTickets")
                                                                         .document(nextTicketNumber)
-                                                                        .set(new Ticket(nextTicketNumber, FieldValue.serverTimestamp()))
+                                                                        .set(new Ticket(nextTicketNumber, FieldValue.serverTimestamp(), FirebaseAuth.getInstance().getCurrentUser().getUid()))
                                                                         .addOnSuccessListener(aVoid2 -> {
                                                                             // Ticket added to "calledTickets" collection
                                                                         })
@@ -237,26 +244,45 @@ public class TellerMain extends AppCompatActivity {
         }
     }
 
-
     private void callPreviousTicket() {
-        // Retrieve the previousTicket from Firestore
+        String tellerUID = FirebaseAuth.getInstance().getCurrentUser().getUid();
+
+        // Retrieve the calledTickets collection from Firestore in descending order of timestamp
         db.collection("services")
                 .document(assignedService.toLowerCase())
+                .collection("calledTickets")
+                .orderBy("timestamp", Query.Direction.DESCENDING)
                 .get()
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful() && task.getResult() != null) {
-                        String previousTicketNumber = task.getResult().getString("previousTicket");
+                        List<DocumentSnapshot> calledTickets = task.getResult().getDocuments();
 
-                        if (previousTicketNumber != null && !previousTicketNumber.isEmpty()) {
-                            // Set the textViewTicketNumber to the previous ticket number
-                            textViewTicketNumber.setText(previousTicketNumber);
+                        // Find the 2nd most recent ticket called by the teller
+                        String secondMostRecentTicketNumber = null;
+                        boolean foundFirstTicketByTeller = false;
+
+                        for (DocumentSnapshot ticketSnapshot : calledTickets) {
+                            String ticketTellerUID = ticketSnapshot.getString("tellerUID");
+                            if (ticketTellerUID != null && ticketTellerUID.equals(tellerUID)) {
+                                if (!foundFirstTicketByTeller) {
+                                    // Skip the first ticket called by the teller
+                                    foundFirstTicketByTeller = true;
+                                } else {
+                                    // Found the 2nd most recent ticket called by the teller
+                                    secondMostRecentTicketNumber = ticketSnapshot.getString("ticketNumber");
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (secondMostRecentTicketNumber != null) {
+                            textViewTicketNumber.setText(secondMostRecentTicketNumber);
                         } else {
-                            Toast.makeText(TellerMain.this, "No previous ticket available.", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(TellerMain.this, "There are not enough previous tickets called by you.", Toast.LENGTH_SHORT).show();
                         }
                     } else {
-                        Toast.makeText(TellerMain.this, "Error fetching previous ticket: " + task.getException().getMessage(), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(TellerMain.this, "Error fetching previous tickets: " + task.getException().getMessage(), Toast.LENGTH_SHORT).show();
                     }
                 });
     }
-
 }
