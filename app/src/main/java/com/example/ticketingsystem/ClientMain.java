@@ -1,12 +1,16 @@
 package com.example.ticketingsystem;
 
 import android.os.Bundle;
+import android.os.Vibrator;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.speech.tts.TextToSpeech;
+import android.speech.tts.TextToSpeech.OnInitListener;
+import android.speech.tts.TextToSpeech.OnUtteranceCompletedListener;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -28,9 +32,10 @@ import com.google.firebase.firestore.QuerySnapshot;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
-public class ClientMain extends AppCompatActivity {
+public class ClientMain extends AppCompatActivity  {
 
     private TextView textViewClientName, textViewTicketNumber, textViewService, textViewLatestNumberEdit, textViewCurrentNumberEdit;
     private Spinner spinnerServices;
@@ -41,6 +46,7 @@ public class ClientMain extends AppCompatActivity {
     private ListenerRegistration servicesListenerRegistration;
     private boolean isInitialLoadingComplete = false;
     private int latestTicketNumber = 0;
+    private TextToSpeech textToSpeech;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -87,6 +93,22 @@ public class ClientMain extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 generateTicket();
+            }
+        });
+
+        // Initialize the TextToSpeech engine
+        textToSpeech = new TextToSpeech(this, new OnInitListener() {
+            @Override
+            public void onInit(int status) {
+                if (status == TextToSpeech.SUCCESS) {
+                    // Set the language for TTS (you can choose the language you want)
+                    int result = textToSpeech.setLanguage(Locale.US);
+                    if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                        Toast.makeText(ClientMain.this, "Text-to-speech language is not supported.", Toast.LENGTH_SHORT).show();
+                    }
+                } else {
+                    Toast.makeText(ClientMain.this, "Text-to-speech initialization failed.", Toast.LENGTH_SHORT).show();
+                }
             }
         });
     }
@@ -238,6 +260,9 @@ public class ClientMain extends AppCompatActivity {
         String generatedTicketNumber = textViewTicketNumber.getText().toString();
         if (generatedTicketNumber.equals(currentTicketNumber)) {
             Toast.makeText(ClientMain.this, "It's your turn! Your ticket number is " + currentTicketNumber, Toast.LENGTH_SHORT).show();
+
+            String textToSpeak = "It's your turn. Your ticket number is " + currentTicketNumber;
+            textToSpeech.speak(textToSpeak, TextToSpeech.QUEUE_FLUSH, null, "CLIENT_TURN");
         }
     }
 
@@ -317,5 +342,14 @@ public class ClientMain extends AppCompatActivity {
                 }
             }
         });
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (textToSpeech != null) {
+            textToSpeech.stop();
+            textToSpeech.shutdown();
+        }
     }
 }
